@@ -55,16 +55,61 @@ A FastAPI-based web scraping system that automatically fetches and updates movie
    python src/scripts/run_migrations_run.py
    ```
 
-6. **Start the API server**
+6. **Start the Backend Server**
+
    ```powershell
    $env:DATABASE_URL="postgresql://postgres:129141@localhost:5432/movie_rating_system"
    python -m uvicorn src.main:app --reload --host 0.0.0.0 --port 8000
    ```
 
-7. **Access the API**
-   - Main API: http://localhost:8000/
-   - Interactive Docs: http://localhost:8000/docs
-   - ReDoc: http://localhost:8000/redoc
+   The backend API will be available at:
+   - Main API: <http://localhost:8000/>
+   - Interactive Docs: <http://localhost:8000/docs>
+   - ReDoc: <http://localhost:8000/redoc>
+
+## Running the Application
+
+### Backend Only (Current Setup)
+
+This project is currently a **backend-only API service**. To run it:
+
+```powershell
+# Set environment variable and start the server
+$env:DATABASE_URL="postgresql://postgres:129141@localhost:5432/movie_rating_system"
+python -m uvicorn src.main:app --reload --host 0.0.0.0 --port 8000
+```
+
+Access the interactive API documentation at <http://localhost:8000/docs> to test endpoints directly in your browser.
+
+### Frontend + Backend (Future)
+
+*Note: This project does not currently include a frontend. The API is designed to be consumed by any frontend framework.*
+
+To add a frontend in the future:
+
+1. **Create a frontend directory** (e.g., `frontend/`)
+2. **Choose a framework** (React, Vue, Angular, etc.)
+3. **Install dependencies** in the frontend folder
+4. **Configure API calls** to point to `http://localhost:8000`
+5. **Run both servers**:
+
+   ```powershell
+   # Terminal 1 - Backend
+   $env:DATABASE_URL="postgresql://postgres:129141@localhost:5432/movie_rating_system"
+   python -m uvicorn src.main:app --reload --host 0.0.0.0 --port 8000
+
+   # Terminal 2 - Frontend (example for React)
+   cd frontend
+   npm run dev
+   ```
+
+### Using the API
+
+You can interact with the backend through:
+- **Swagger UI**: <http://localhost:8000/docs> (recommended for testing)
+- **cURL**: Command-line HTTP requests
+- **Postman**: API testing tool
+- **Custom Frontend**: Build your own UI that calls these endpoints
 
 ## API Endpoints
 
