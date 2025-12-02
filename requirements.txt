@@ -1,0 +1,8 @@
+fastapi
+uvicorn
+sqlalchemy
+psycopg[binary]
+httpx
+beautifulsoup4
+pydantic
+alembic

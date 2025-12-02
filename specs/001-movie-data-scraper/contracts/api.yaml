@@ -1,0 +1,219 @@
+openapi: 3.0.0
+info:
+  title: Movie Data Scraper API
+  version: 1.0.0
+  description: API for managing movie data scraping from Wikipedia
+
+paths:
+  /api/scrape/batch:
+    post:
+      summary: Start a new batch scraping process
+      operationId: startBatch
+      tags:
+        - Scraping
+      responses:
+        '200':
+          description: Batch process started successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BatchResponse'
+        '500':
+          description: Internal server error
+          
+  /api/scrape/batch/{batchId}:
+    get:
+      summary: Get batch process status
+      operationId: getBatchStatus
+      tags:
+        - Scraping
+      parameters:
+        - name: batchId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Batch status retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BatchStatus'
+        '404':
+          description: Batch not found
+    
+    delete:
+      summary: Cancel a running batch process
+      operationId: cancelBatch
+      tags:
+        - Scraping
+      parameters:
+        - name: batchId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Batch cancelled successfully
+        '404':
+          description: Batch not found
+        
+  /api/movies/{movieId}/scrape:
+    post:
+      summary: Manually trigger scraping for a specific movie
+      operationId: scrapeMovie
+      tags:
+        - Movies
+      parameters:
+        - name: movieId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Movie data updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MovieUpdateResponse'
+        '404':
+          description: Movie not found
+        '500':
+          description: Scraping or update failed
+
+  /api/logs:
+    get:
+      summary: Get update operation logs
+      operationId: getLogs
+      tags:
+        - Logs
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [success, failed, in_progress]
+        - name: movieId
+          in: query
+          schema:
+            type: integer
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: pageSize
+          in: query
+          schema:
+            type: integer
+            default: 50
+      responses:
+        '200':
+          description: Logs retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LogsResponse'
+
+components:
+  schemas:
+    BatchResponse:
+      type: object
+      properties:
+        batchId:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum: [running, completed, failed, paused]
+        startTime:
+          type: string
+          format: date-time
+        totalRecords:
+          type: integer
+          
+    BatchStatus:
+      type: object
+      properties:
+        batchId:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum: [running, completed, failed, paused]
+        startTime:
+          type: string
+          format: date-time
+        endTime:
+          type: string
+          format: date-time
+          nullable: true
+        totalRecords:
+          type: integer
+        processedRecords:
+          type: integer
+        progress:
+          type: number
+          format: float
+        lastProcessedId:
+          type: integer
+          nullable: true
+          
+    MovieUpdateResponse:
+      type: object
+      properties:
+        movieId:
+          type: integer
+        status:
+          type: string
+          enum: [success, failed]
+        updatedFields:
+          type: array
+          items:
+            type: string
+        error:
+          type: string
+          nullable: true
+          
+    LogsResponse:
+      type: object
+      properties:
+        total:
+          type: integer
+        page:
+          type: integer
+        pageSize:
+          type: integer
+        logs:
+          type: array
+          items:
+            $ref: '#/components/schemas/Log'
+            
+    Log:
+      type: object
+      properties:
+        id:
+          type: integer
+        movieId:
+          type: integer
+        operationType:
+          type: string
+        status:
+          type: string
+          enum: [success, failed, in_progress]
+        errorMessage:
+          type: string
+          nullable: true
+        retryCount:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
