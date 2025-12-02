@@ -1,5 +1,7 @@
 # Movie Data Web Scraper
 
+![Movie Data Scraper](image.png)
+
 A FastAPI-based web scraping system that automatically fetches and updates movie data from Wikipedia, including poster URLs, synopses, and film images, storing them in a PostgreSQL database.
 
 ## Features
