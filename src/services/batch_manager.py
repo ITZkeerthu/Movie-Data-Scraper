@@ -8,23 +8,27 @@ import time
 
 
 def start_batch(batch_size: int, rate_limit: float):
+    if rate_limit <= 0:
+        raise ValueError("rate_limit must be greater than 0")
     db: Session = SessionLocal()
     batch_id = str(uuid.uuid4())
-    movies = get_missing_data_movies(db, batch_size)
-    batch = BatchProgress(
-        batch_id=batch_id,
-        total_records=len(movies),
-        processed_records=0,
-        status="running"
-    )
-    db.add(batch)
-    db.commit()
-    for movie in movies:
-        # Placeholder for actual scraping and update logic
-        time.sleep(1.0 / rate_limit)
-        batch.processed_records += 1
+    try:
+        movies = get_missing_data_movies(db, batch_size)
+        batch = BatchProgress(
+            batch_id=batch_id,
+            total_records=len(movies),
+            processed_records=0,
+            status="running"
+        )
+        db.add(batch)
         db.commit()
-    batch.status = "completed"
-    db.commit()
-    db.close()
+        for movie in movies:
+            # Placeholder for actual scraping and update logic
+            time.sleep(1.0 / rate_limit)
+            batch.processed_records += 1
+            db.commit()
+        batch.status = "completed"
+        db.commit()
+    finally:
+        db.close()
     return batch_id
