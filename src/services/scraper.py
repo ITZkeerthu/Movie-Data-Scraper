@@ -1,4 +1,6 @@
 import re
+from typing import Optional
+from urllib.parse import quote
 from bs4 import BeautifulSoup
 from ..utils.http_client import get_client
 
@@ -7,24 +9,41 @@ WIKIPEDIA_BASE_URL = "https://en.wikipedia.org/wiki/"
 
 def fetch_wikipedia_page(title: str, year: int) -> str:
     # Wikipedia page format: Title_(year_film)
-    page_title = f"{title.replace(' ', '_')}_({year}_film)"
+    page_title = quote(f"{title.strip().replace(' ', '_')}_({year}_film)", safe="_()")
     url = WIKIPEDIA_BASE_URL + page_title
     client = get_client()
     resp = client.get(url)
     return resp.text
 
 
-def parse_poster_url(html: str) -> str:
-    soup = BeautifulSoup(html, "html.parser")
-    infobox = soup.find("table", class_="infobox")
-    if infobox:
-        img = infobox.find("img")
-        if img and img.has_attr("src"):
-            return "https:" + img["src"]
+def _absolute_url(src: Optional[str]) -> Optional[str]:
+    """Normalise an <img> src to an absolute https URL (None if unusable)."""
+    if not src:
+        return None
+    if src.startswith("//"):
+        return "https:" + src
+    if src.startswith("/"):
+        return "https://en.wikipedia.org" + src
+    if src.startswith(("http://", "https://")):
+        return src
     return None
 
 
-def parse_synopsis(html: str) -> str:
+def _infobox_image_urls(html: str) -> list:
+    soup = BeautifulSoup(html, "html.parser")
+    infobox = soup.find("table", class_="infobox")
+    if not infobox:
+        return []
+    urls = (_absolute_url(img.get("src")) for img in infobox.find_all("img"))
+    return [u for u in urls if u]
+
+
+def parse_poster_url(html: str) -> Optional[str]:
+    urls = _infobox_image_urls(html)
+    return urls[0] if urls else None
+
+
+def parse_synopsis(html: str) -> Optional[str]:
     soup = BeautifulSoup(html, "html.parser")
     # Try to find the plot section
     plot_header = soup.find(id=re.compile("plot", re.I))
@@ -39,13 +58,8 @@ def parse_synopsis(html: str) -> str:
     return None
 
 
-def parse_film_image_url(html: str) -> str:
-    soup = BeautifulSoup(html, "html.parser")
-    infobox = soup.find("table", class_="infobox")
-    if infobox:
-        imgs = infobox.find_all("img")
-        if imgs and len(imgs) > 1:
-            return "https:" + imgs[1]["src"]
-        elif imgs:
-            return "https:" + imgs[0]["src"]
-    return None
+def parse_film_image_url(html: str) -> Optional[str]:
+    urls = _infobox_image_urls(html)
+    if len(urls) > 1:
+        return urls[1]
+    return urls[0] if urls else None
