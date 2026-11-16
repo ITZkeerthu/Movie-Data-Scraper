@@ -64,3 +64,35 @@ def test_client_raises_on_http_error():
     c._client = httpx.Client(transport=httpx.MockTransport(lambda r: httpx.Response(404)))
     with pytest.raises(httpx.HTTPStatusError):
         c.get("https://example.org/missing")
+
+
+def _status_error(code):
+    req = httpx.Request("GET", "https://example.org/x")
+    return httpx.HTTPStatusError("err", request=req, response=httpx.Response(code, request=req))
+
+
+def test_retry_skips_permanent_http_errors():
+    calls = []
+
+    @retry.exponential_backoff(max_attempts=3, should_retry=retry.is_transient_error)
+    def missing():
+        calls.append(1)
+        raise _status_error(404)
+
+    with pytest.raises(httpx.HTTPStatusError):
+        missing()
+    assert len(calls) == 1
+
+
+def test_retry_retries_server_errors():
+    calls = []
+
+    @retry.exponential_backoff(max_attempts=3, should_retry=retry.is_transient_error)
+    def flaky():
+        calls.append(1)
+        if len(calls) < 3:
+            raise _status_error(503)
+        return "ok"
+
+    assert flaky() == "ok"
+    assert len(calls) == 3
