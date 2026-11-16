@@ -3,10 +3,12 @@ from typing import Optional
 from urllib.parse import quote
 from bs4 import BeautifulSoup
 from ..utils.http_client import get_client
+from ..utils.retry import exponential_backoff, is_transient_error
 
 WIKIPEDIA_BASE_URL = "https://en.wikipedia.org/wiki/"
 
 
+@exponential_backoff(max_attempts=3, should_retry=is_transient_error)
 def fetch_wikipedia_page(title: str, year: int) -> str:
     # Wikipedia page format: Title_(year_film)
     page_title = quote(f"{title.strip().replace(' ', '_')}_({year}_film)", safe="_()")

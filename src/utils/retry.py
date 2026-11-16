@@ -1,9 +1,22 @@
 import time
 import random
+import httpx
 from functools import wraps
 
 
-def exponential_backoff(max_attempts: int = 3, base_delay: float = 0.5, max_delay: float = 10.0):
+def is_transient_error(exc: Exception) -> bool:
+    """True for errors worth retrying: network failures, 429 and 5xx responses.
+
+    Other 4xx responses (e.g. a 404 for a missing Wikipedia page) are permanent.
+    """
+    if isinstance(exc, httpx.HTTPStatusError):
+        code = exc.response.status_code
+        return code == 429 or code >= 500
+    return True
+
+
+def exponential_backoff(max_attempts: int = 3, base_delay: float = 0.5, max_delay: float = 10.0,
+                        should_retry=None):
     """Decorator for retrying a function with exponential backoff.
 
     Example:
@@ -20,7 +33,7 @@ def exponential_backoff(max_attempts: int = 3, base_delay: float = 0.5, max_dela
                     return func(*args, **kwargs)
                 except Exception as e:
                     attempts += 1
-                    if attempts >= max_attempts:
+                    if attempts >= max_attempts or (should_retry and not should_retry(e)):
                         raise
                     delay = min(max_delay, base_delay * (2 ** (attempts - 1)))
                     # add some jitter
