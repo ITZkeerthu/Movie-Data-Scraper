@@ -46,3 +46,22 @@ def test_fetch_failure_is_502(monkeypatch):
     with pytest.raises(HTTPException) as e:
         movies.scrape_movie(1, db=FakeDB(M()))
     assert e.value.status_code == 502
+
+
+def test_wikipedia_404_is_404(monkeypatch):
+    import httpx
+    def missing(*a):
+        req = httpx.Request("GET", "https://en.wikipedia.org/wiki/x")
+        raise httpx.HTTPStatusError("nf", request=req, response=httpx.Response(404, request=req))
+    monkeypatch.setattr(movies, "fetch_wikipedia_page", missing)
+    with pytest.raises(HTTPException) as e:
+        movies.scrape_movie(1, db=FakeDB(M()))
+    assert e.value.status_code == 404
+
+
+def test_movie_deleted_during_scrape_is_404(monkeypatch):
+    monkeypatch.setattr(movies, "fetch_wikipedia_page", lambda t, y: "<p>x</p>")
+    monkeypatch.setattr(movies, "apply_scraped_fields", lambda *a: False)
+    with pytest.raises(HTTPException) as e:
+        movies.scrape_movie(1, db=FakeDB(M()))
+    assert e.value.status_code == 404

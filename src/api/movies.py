@@ -1,3 +1,4 @@
+import httpx
 from fastapi import APIRouter, Depends, HTTPException, Path
 from sqlalchemy.orm import Session
 from ..db.connection import get_db
@@ -17,10 +18,17 @@ def scrape_movie(movieId: int = Path(...), db: Session = Depends(get_db)):
         raise HTTPException(status_code=422, detail="Movie has no release_year; cannot build Wikipedia page title")
     try:
         html = fetch_wikipedia_page(movie.title, movie.release_year)
+    except httpx.HTTPStatusError as exc:
+        if exc.response.status_code == 404:
+            raise HTTPException(status_code=404, detail=f"No Wikipedia page found for '{movie.title}' ({movie.release_year})")
+        raise HTTPException(status_code=502, detail=f"Could not fetch Wikipedia page: {exc}")
     except Exception as exc:
         raise HTTPException(status_code=502, detail=f"Could not fetch Wikipedia page: {exc}")
     poster_url = parse_poster_url(html)
     synopsis = parse_synopsis(html)
     film_image_url = parse_film_image_url(html)
     updated_fields = apply_scraped_fields(movieId, poster_url, synopsis, film_image_url)
+    if updated_fields is False:
+        # Movie was deleted between the lookup and the update.
+        raise HTTPException(status_code=404, detail=f"Movie {movieId} not found")
     return {"movieId": movieId, "status": "success", "updatedFields": updated_fields}
